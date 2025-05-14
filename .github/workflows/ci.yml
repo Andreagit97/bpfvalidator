@@ -1,0 +1,44 @@
+name: CI Build
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: test-${{ matrix.arch }}
+    runs-on: ${{ (matrix.arch == 'arm64' && 'ubuntu-24.04-arm') || 'ubuntu-24.04' }}
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - name: Install deps
+        run: |
+          sudo apt update
+          sudo apt install --yes git qemu-kvm udev iproute2 busybox-static coreutils python3-requests libvirt-clients kbd kmod file rsync zstd udev 
+          # python3-pip flake8 pylint cargo rustc qemu-system-x86
+
+      - name: "KVM support"
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # todo!: install a fixed version of virtme-ng
+      - name: Install vng
+        run: |
+          sudo apt install virtme-ng
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Build & test
+        run: |
+          go build .
+          go test ./...

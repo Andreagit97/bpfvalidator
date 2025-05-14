@@ -1,0 +1,8 @@
+vng_path: "vng"
+bin_command: "/usr/bin/echo 'hey'"
+parallel: 3
+out_path: ""
+kernel_versions:
+    - v5.4.293
+    - v5.10.237
+    - v5.15.182
