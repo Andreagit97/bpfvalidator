@@ -48,7 +48,7 @@ runs:
         echo "vng_path: \"vng\"" > conf.yaml
         echo "bin_command: \"${{ inputs.cmd }}\"" >> conf.yaml
         echo "parallel: 1" >> conf.yaml
-        echo "out_path: report.yml" >> conf.yaml
+        echo "out_path: /tmp/report.yaml" >> conf.yaml
         echo "kernel_versions: [${{ inputs.kernels }}]" >> conf.yaml
       
     - name: Run bpfvalidator
@@ -60,4 +60,4 @@ runs:
     - name: Set output
       id: store-outputs
       shell: bash
-      run: echo "report=${{ github.action_path }}/report.yaml" >> $GITHUB_OUTPUT
+      run: echo "report=/tmp/report.yaml" >> $GITHUB_OUTPUT
