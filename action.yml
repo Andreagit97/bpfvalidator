@@ -1,0 +1,63 @@
+name: 'bpfvalidator'
+description: 'Run eBPF programs against range of vanilla kernels.'
+
+inputs:
+  cmd:
+    description: 'command to run in qemu machines'
+    required: true
+  kernels:
+    description: 'comma-separated list of kernels to be tested'
+    required: true
+
+outputs:
+  report:
+    description: "Report of the run"
+    value: ${{ steps.store-outputs.outputs.report }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install vng
+      shell: bash
+      run: |
+        sudo apt update -y
+        sudo apt install -y git qemu-kvm kmod virtiofsd udev virtme-ng
+
+    - name: enable KVM support
+      if: matrix.arch == 'amd64'
+      shell: bash
+      run: |
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: "${{ github.action_path }}/go.mod"
+
+    - name: Build bpfvalidator
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: go build .
+     
+    - name: Generate bpfvalidator config
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        echo "vng_path: \"vng\"" > conf.yaml
+        echo "bin_command: \"${{ inputs.cmd }}\"" >> conf.yaml
+        echo "parallel: 1" >> conf.yaml
+        echo "out_path: report.yml" >> conf.yaml
+        echo "kernel_versions: [${{ inputs.kernels }}]" >> conf.yaml
+      
+    - name: Run bpfvalidator
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run:
+        ./bpfvalidator --config conf.yaml
+
+    - name: Set output
+      id: store-outputs
+      shell: bash
+      run: echo "report=${{ github.action_path }}/report.yaml" >> $GITHUB_OUTPUT
