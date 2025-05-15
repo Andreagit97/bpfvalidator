@@ -1,0 +1,23 @@
+name: Test composite action
+on:
+  pull_request:
+    paths:
+      - 'action.yml'
+  workflow_dispatch:    
+
+jobs:
+  test-composite-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+    
+      - name: Test action
+        uses: ./
+        id: test
+        with:
+          cmd: "/usr/bin/echo 'hey'"
+          kernels: "v5.4.293,v5.10.237,v5.15.182"
+
+      - name: Show report
+        run: cat ${{ steps.test.outputs.report }}
