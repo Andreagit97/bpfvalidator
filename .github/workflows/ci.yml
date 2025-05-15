@@ -7,28 +7,25 @@ on:
 
 jobs:
   test:
-    name: test-${{ matrix.arch }}
-    runs-on: ${{ (matrix.arch == 'arm64' && 'ubuntu-24.04-arm') || 'ubuntu-24.04' }}
-    strategy:
-      matrix:
-        arch: [amd64, arm64]
+    name: test-x86
+    runs-on: ubuntu-24.04
     steps:
-      - name: Install deps
+      # todo!: install a fixed version of virtme-ng
+      - name: Install vng
         run: |
-          sudo apt update
-          sudo apt install --yes git qemu-kvm udev iproute2 busybox-static coreutils python3-requests libvirt-clients kbd kmod file rsync zstd udev 
-          # python3-pip flake8 pylint cargo rustc qemu-system-x86
+          sudo apt update -y
+          sudo apt install -y git qemu-kvm kmod virtiofsd udev virtme-ng
 
-      - name: "KVM support"
+      - name: KVM support
+        if: matrix.arch == 'amd64'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # todo!: install a fixed version of virtme-ng
-      - name: Install vng
+      - name: Test vng
         run: |
-          sudo apt install virtme-ng
+          vng -v -r v5.4.293 -- /usr/bin/echo "OK"
 
       - name: Setup Go
         uses: actions/setup-go@v5

@@ -80,9 +80,9 @@ func TestOutput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			results := run(tt.cfg)
-			require.Len(t, results, len(tt.resultsExpected), "results length mismatch")
-			require.Equal(t, results[0].version, tt.resultsExpected[0].version, "version mismatch")
-			require.Equal(t, results[0].res, tt.resultsExpected[0].res, "code mismatch.")
+			require.Equal(t, len(tt.resultsExpected), len(results), "results length mismatch")
+			require.Equal(t, tt.resultsExpected[0].version, results[0].version, "version mismatch")
+			require.Equal(t, tt.resultsExpected[0].res, results[0].res, "code mismatch.")
 			if results[0].message != "" {
 				// only in case of failure
 				t.Logf("message from '%s': %s", results[0].version, results[0].message)
