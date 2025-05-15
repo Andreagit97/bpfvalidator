@@ -1,6 +1,6 @@
 # bpfvalidator
 
-This is a simple tool that spawns qemu machines to test a specific binary on these machines.
+This is a simple tool that spawns qemu machines to test a specific binary on these machines. This is particularly useful for testing eBPF programs against different kernel versions.
 Under the hood it uses [virtme-ng](https://github.com/arighi/virtme-ng) tool to create qemu instancies.
 Given this configuration file:
 
@@ -62,8 +62,8 @@ Example
 
 ```txt
 - v7.9.0 🟡 #the provided machine doesn't exists
-- v5.10.237 🟢
-- v5.15.182 🟢
+- v5.10.237 🟢 # success
+- v5.15.182 🔴 # failure
 ```
 
 ## Build and run
