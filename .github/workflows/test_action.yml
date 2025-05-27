@@ -7,7 +7,11 @@ on:
 
 jobs:
   test-composite-action:
-    runs-on: ubuntu-latest
+    name: test-composite-action-${{ matrix.arch }}
+    runs-on: ${{ (matrix.arch == 'arm64' && 'ubuntu-24.04-arm') || 'ubuntu-24.04' }}
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,8 +20,9 @@ jobs:
         uses: ./
         id: test
         with:
-          cmd: "/usr/bin/echo 'hey'"
+          cmd: "/usr/bin/echo 'OK'"
           kernels: "v5.4.293,v5.10.237,v5.15.182"
+          kvm: ${{ matrix.arch == 'amd64' }}
 
       - name: Show report
         run: cat ${{ steps.test.outputs.report }}
