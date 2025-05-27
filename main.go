@@ -110,9 +110,13 @@ func convertResToIcon(res code) string {
 	}
 }
 
-func printReport(results []result, outfile string) {
+func printReport(results []result, outfile string) bool {
+	res := true
 	report := "\nReport:\n"
 	for _, r := range results {
+		if r.res != success {
+			res = false
+		}
 		icon := convertResToIcon(r.res)
 		if log.GetLevel() < log.DebugLevel {
 			report += fmt.Sprintf("- %s %s\n", r.version, icon)
@@ -128,7 +132,7 @@ func printReport(results []result, outfile string) {
 	} else {
 		fmt.Print(report)
 	}
-
+	return res
 }
 
 func run(cfg *Config) []result {
@@ -215,5 +219,7 @@ func main() {
 		log.Fatalf("error parsing YAML: %v\n", err)
 	}
 	reports := run(&cfg)
-	printReport(reports, cfg.OutPath)
+	if ok := printReport(reports, cfg.OutPath); !ok {
+		os.Exit(1)
+	}
 }

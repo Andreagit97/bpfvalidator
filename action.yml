@@ -20,47 +20,64 @@ inputs:
     required: false
     default: true
     type: boolean
-  upload_report:
-    description: 'name of the report file to upload (default: ""). If set to "" no report will be uploaded.'
+  fail_on_validation:
+    description: 'fail the action if validation fails'
     required: false
-    default: ""
+    default: true
+    type: boolean
+  skip_dependencies:
+    description: 'skip installing dependencies'
+    required: false
+    default: false
+    type: boolean
 
 outputs:
   report:
-    description: "Report of the run"
-    value: ${{ steps.store-outputs.outputs.report }}
+    description: "Report of the validation"
+    value: ${{ steps.run-validator.outputs.report }}
+  outcome:
+    description: "Outcome of the validation"
+    value: ${{ steps.run-validator.outputs.outcome }}
 
 runs:
   using: "composite"
   steps:
     - name: Install deps
+      if: inputs.skip_dependencies != 'true'
       shell: bash
       run: |
         sudo apt update
         sudo apt install -y git qemu-system udev virtiofsd
 
+    - name: Setup Go
+      if: inputs.skip_dependencies != 'true'
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: "${{ github.action_path }}/go.mod"
+
     - name: KVM support
       shell: bash
-      if: inputs.kvm == 'true'
+      if: inputs.skip_dependencies != 'true' && inputs.kvm == 'true'
       run: |
         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
         sudo udevadm control --reload-rules
         sudo udevadm trigger --name-match=kvm
         sudo apt install -y qemu-kvm kmod
 
-    - name: Build bpfvalidator
-      shell: bash
-      working-directory: ${{ github.action_path }}
-      run: go build .
-
-    # we hardcode the vng version here, since dependencies and build process could change
+    # we hardcode the vng version here, since dependencies and build process could change among versions
     - name: Install vng
+      if: inputs.skip_dependencies != 'true'
       shell: bash
       run: |
         git clone --single-branch --branch v1.36 --depth 1 --recurse-submodules https://github.com/arighi/virtme-ng.git
         cd virtme-ng/
         BUILD_VIRTME_NG_INIT=1 pip3 install . --break-system-packages
         echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Build bpfvalidator
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: go build .
 
     - name: Generate bpfvalidator config
       shell: bash
@@ -70,23 +87,24 @@ runs:
         echo "bin_command: \"${{ inputs.cmd }}\"" >> conf.yaml
         echo "parallel: ${{ inputs.parallel }}" >> conf.yaml
         echo "kernel_versions: [${{ inputs.kernels }}]" >> conf.yaml
-        echo "out_path: /tmp/report.yaml" >> conf.yaml
-      
+        echo "out_path: /tmp/report.txt" >> conf.yaml
+
+    # we offer 2 possible ways to consume the output of bpfvalidator:
+    # 1. print it directly in the action log
+    # 2. set it as an output variable      
     - name: Run bpfvalidator
-      shell: bash
+      # we don't want the action to fail immediately if bpfvalidator fails.
+      # so we remove `-eo pipefail` from the shell option.
+      # see https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#exit-codes-and-error-action-preference
+      shell: bash --noprofile --norc {0}
+      id: run-validator
       working-directory: ${{ github.action_path }}
-      run:
+      run: |
         ./bpfvalidator --config conf.yaml
-
-    - name: Set output
-      id: store-outputs
-      shell: bash
-      run: echo "report=/tmp/report.yaml" >> $GITHUB_OUTPUT
-
-    # we used a fixed version of the upload-artifact action
-    - name: Upload report
-      if: inputs.upload_report != ''
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-      with:
-        name: ${{ inputs.upload_report }}
-        path: /tmp/report.yaml
+        outcome=$?
+        echo "outcome=$outcome" >> $GITHUB_OUTPUT
+        echo "report=/tmp/report.txt" >> $GITHUB_OUTPUT
+        cat /tmp/report.txt
+        if [ $outcome -ne 0 ] && [ "${{ inputs.fail_on_validation }}" == "true" ]; then
+          exit $outcome
+        fi
