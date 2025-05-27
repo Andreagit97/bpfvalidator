@@ -14,33 +14,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
     
+      # we trigger a failure using a wrong kernel version
       - name: Test action
         uses: ./
         id: test
         with:
           cmd: "/usr/bin/echo 'OK'"
-          kernels: "v5.4.293,v5.10.237,v5.15.182"
+          kernels: "v700.4.293,v5.10.237,v5.15.182"
           kvm: ${{ matrix.arch == 'amd64' }}
-          upload_report: "report-${{ matrix.arch }}.yaml"
+          fail_on_validation: false
 
-      - name: Show report
+      - name: Show report 
         run: cat ${{ steps.test.outputs.report }}
 
-  test-composite-action-no-upload:
-    name: test-composite-action-no-upload
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-    
-      - name: Test action
-        uses: ./
-        id: test
-        with:
-          cmd: "/usr/bin/echo 'OK'"
-          kernels: "v5.4.293,v5.10.237,v5.15.182"
-          parallel: 2
-          kvm: true
-
-      - name: Show report
-        run: cat ${{ steps.test.outputs.report }}
+      - name: Show outcome
+        run: echo "${{ steps.test.outputs.outcome }}"
