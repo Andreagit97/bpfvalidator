@@ -1,5 +1,8 @@
 name: 'bpfvalidator'
-description: 'Run eBPF programs against range of vanilla kernels.'
+description: 'Run eBPF programs against a range of kernels.'
+branding:
+  icon: 'box'
+  color: 'green'
 
 inputs:
   cmd:
