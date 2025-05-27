@@ -83,10 +83,7 @@ func TestOutput(t *testing.T) {
 			require.Equal(t, len(tt.resultsExpected), len(results), "results length mismatch")
 			require.Equal(t, tt.resultsExpected[0].version, results[0].version, "version mismatch")
 			require.Equal(t, tt.resultsExpected[0].res, results[0].res, "code mismatch.")
-			if results[0].message != "" {
-				// only in case of failure
-				t.Logf("message from '%s': %s", results[0].version, results[0].message)
-			}
+			t.Logf("results:\n%v", results)
 		})
 	}
 }

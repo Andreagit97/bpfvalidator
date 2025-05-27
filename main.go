@@ -44,6 +44,10 @@ type result struct {
 	message string
 }
 
+func (r result) String() string {
+	return fmt.Sprintf("%s -> version: %s, message: '%s'", convertResToIcon(r.res), r.version, r.message)
+}
+
 // Config represents the structure of the YAML configuration file
 type Config struct {
 	VngPath        string   `yaml:"vng_path"`
@@ -91,20 +95,25 @@ func runVng(ctx context.Context, vngPath, BinCommand, version string) result {
 	return result{version: version, res: failure, message: stderrStr}
 }
 
+func convertResToIcon(res code) string {
+	switch res {
+	case success:
+		return successIcon
+	case failure:
+		return failureIcon
+	case missing:
+		return missingMachineIcon
+	case cancelled:
+		return cancelledIcon
+	default:
+		panic(fmt.Sprintf("Unknown result code: %d", res))
+	}
+}
+
 func printReport(results []result, outfile string) {
 	report := "\nReport:\n"
 	for _, r := range results {
-		icon := ""
-		switch r.res {
-		case success:
-			icon = successIcon
-		case failure:
-			icon = failureIcon
-		case missing:
-			icon = missingMachineIcon
-		case cancelled:
-			icon = cancelledIcon
-		}
+		icon := convertResToIcon(r.res)
 		if log.GetLevel() < log.DebugLevel {
 			report += fmt.Sprintf("- %s %s\n", r.version, icon)
 		} else {
