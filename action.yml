@@ -20,6 +20,10 @@ inputs:
     required: false
     default: true
     type: boolean
+  upload_report:
+    description: 'name of the report file to upload (default: ""). If set to "" no report will be uploaded.'
+    required: false
+    default: ""
 
 outputs:
   report:
@@ -78,3 +82,11 @@ runs:
       id: store-outputs
       shell: bash
       run: echo "report=/tmp/report.yaml" >> $GITHUB_OUTPUT
+
+    # we used a fixed version of the upload-artifact action
+    - name: Upload report
+      if: inputs.upload_report != ''
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: ${{ inputs.upload_report }}
+        path: /tmp/report.yaml
