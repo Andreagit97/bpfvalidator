@@ -7,14 +7,16 @@ on:
 
 jobs:
   test:
-    name: test-x86
-    runs-on: ubuntu-24.04
+    name: test-${{ matrix.arch }}
+    runs-on: ${{ (matrix.arch == 'arm64' && 'ubuntu-24.04-arm') || 'ubuntu-24.04' }}
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
     steps:
-      # todo!: install a fixed version of virtme-ng
-      - name: Install vng
+      - name: Install deps
         run: |
-          sudo apt update -y
-          sudo apt install -y git qemu-kvm kmod virtiofsd udev virtme-ng
+          sudo apt update
+          sudo apt install -y git qemu-system udev virtiofsd
 
       - name: KVM support
         if: matrix.arch == 'amd64'
@@ -22,6 +24,14 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          sudo apt install -y qemu-kvm kmod
+
+      - name: Install vng
+        run: |
+          git clone --single-branch --branch v1.36 --depth 1 --recurse-submodules https://github.com/arighi/virtme-ng.git
+          cd virtme-ng/
+          BUILD_VIRTME_NG_INIT=1 pip3 install . --break-system-packages
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Test vng
         run: |
@@ -38,4 +48,4 @@ jobs:
       - name: Build & test
         run: |
           go build .
-          go test ./...
+          go test ./... -v
