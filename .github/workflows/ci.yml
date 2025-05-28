@@ -50,3 +50,29 @@ jobs:
         run: |
           go build .
           go test ./... -v
+
+  test-composite-action:
+    name: test-composite-action-${{ matrix.arch }}
+    runs-on: ${{ (matrix.arch == 'arm64' && 'ubuntu-24.04-arm') || 'ubuntu-24.04' }}
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+    
+      # we trigger a failure using a wrong kernel version
+      - name: Test action
+        uses: ./.github/actions/bpfvalidator
+        id: test
+        with:
+          cmd: "/usr/bin/echo 'OK'"
+          kernels: "v700.4.293,v5.10.237,v5.15.182"
+          kvm: ${{ matrix.arch == 'amd64' }}
+          fail_on_validation: false
+
+      - name: Show report 
+        run: cat ${{ steps.test.outputs.report }}
+
+      - name: Show outcome
+        run: echo "${{ steps.test.outputs.outcome }}"
