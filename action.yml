@@ -49,6 +49,12 @@ runs:
         sudo apt update
         sudo apt install -y git qemu-system udev virtiofsd
 
+    - name: Setup Go
+      if: inputs.skip_dependencies != 'true'
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: "${{ github.action_path }}/go.mod"
+
     - name: KVM support
       shell: bash
       if: inputs.skip_dependencies != 'true' && inputs.kvm == 'true'
@@ -57,12 +63,6 @@ runs:
         sudo udevadm control --reload-rules
         sudo udevadm trigger --name-match=kvm
         sudo apt install -y qemu-kvm kmod
-
-    - name: Setup Go
-      if: inputs.skip_dependencies != 'true'
-      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
-      with:
-        go-version-file: "${{ github.action_path }}/../../../go.mod"
 
     # we hardcode the vng version here, since dependencies and build process could change among versions
     - name: Install vng
@@ -76,12 +76,12 @@ runs:
 
     - name: Build bpfvalidator
       shell: bash
-      working-directory: ${{ github.action_path }}/../../../
+      working-directory: ${{ github.action_path }}
       run: go build .
 
     - name: Generate bpfvalidator config
       shell: bash
-      working-directory: ${{ github.action_path }}/../../../
+      working-directory: ${{ github.action_path }}
       run: |
         echo "vng_path: \"vng\"" > conf.yaml
         echo "bin_command: \"${{ inputs.cmd }}\"" >> conf.yaml
@@ -98,7 +98,7 @@ runs:
       # see https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#exit-codes-and-error-action-preference
       shell: bash --noprofile --norc {0}
       id: run-validator
-      working-directory: ${{ github.action_path }}/../../../
+      working-directory: ${{ github.action_path }}
       run: |
         ./bpfvalidator --config conf.yaml
         outcome=$?
