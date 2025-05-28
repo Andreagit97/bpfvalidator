@@ -18,7 +18,7 @@ kernel_versions:
 bpfvalidator will:
 
 - create 3 qemu machines with the kernel versions specified in the configuration file
-- run the command `/usr/bin/true` in each of them
+- run the command `/usr/bin/echo 'hey'` in each of them
 - wait for the command to finish
 - collect the output of the command
 - generate a report telling if the command passed or failed
