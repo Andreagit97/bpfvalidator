@@ -10,43 +10,44 @@ jobs:
     name: test-${{ matrix.arch }}
     runs-on: ${{ (matrix.arch == 'arm64' && 'ubuntu-24.04-arm') || 'ubuntu-24.04' }}
     strategy:
+      fail-fast: false
       matrix:
         arch: [amd64, arm64]
     steps:
-      - name: Install deps
-        run: |
-          sudo apt update
-          sudo apt install -y git qemu-system udev virtiofsd
-
-      # https://github.blog/changelog/2023-02-23-hardware-accelerated-android-virtualization-on-actions-windows-and-linux-larger-hosted-runners/
-      - name: KVM support
-        if: matrix.arch == 'amd64'
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          sudo apt install -y qemu-kvm kmod
-
-      - name: Install vng
-        run: |
-          git clone --single-branch --branch v1.36 --depth 1 --recurse-submodules https://github.com/arighi/virtme-ng.git
-          cd virtme-ng/
-          BUILD_VIRTME_NG_INIT=1 pip3 install . --break-system-packages
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Test vng
-        run: |
-          vng -v -r v5.4.293 -- /usr/bin/echo "OK"
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    
+      # we use the composite action to install dependencies and setup the environment
+      - name: Test default config
+        uses: ./
         with:
-          fetch-depth: 0
+          args: "--config=./config.yaml"
 
       - name: Build & test
         run: |
           go build .
           go test ./... -v
+
+      # The previous step should have already installed the dependencies, so we can skip them here
+      - name: Test no-dependencies
+        uses: ./
+        with:
+          args: |
+            --config=./config.yaml --cmd="/usr/bin/echo 'no-dependencies'"
+          skip_dependencies: true
+
+      # We provide a wrong kernel version `v700.4.293` to test the fail_on_validation feature
+      - name: Test action fail_on_validation
+        uses: ./
+        id: test-fail
+        with:
+          args: |
+            --config=./config.yaml --cmd="/usr/bin/echo 'fail'" --kernel_versions="v700.4.293,v5.10.237,v5.15.182"
+          skip_dependencies: true
+          fail_on_validation: false
+
+      - name: Show report 
+        run: cat ${{ steps.test-fail.outputs.report }}
+
+      - name: Show outcome
+        run: echo "${{ steps.test-fail.outputs.outcome }}"
