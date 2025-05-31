@@ -14,9 +14,9 @@ func defaultConfig(versions []string, successBinary bool) *Config {
 		Parallel:       1,
 	}
 	if successBinary {
-		cfg.BinCommand = "/usr/bin/true"
+		cfg.Cmd = "/usr/bin/true"
 	} else {
-		cfg.BinCommand = "/usr/bin/false"
+		cfg.Cmd = "/usr/bin/false"
 	}
 
 	return cfg
