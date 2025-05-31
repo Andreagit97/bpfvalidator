@@ -11,6 +11,10 @@ git push origin v0.0.1
 
 The CI should automatically craft a new release
 
+## Publish the action on the marketplace
+
+Once the CI has created the release, you can publish the action on the GitHub Marketplace editing the release and clicking on the "Publish" button.
+
 ## Delete a tag
 
 ```bash
