@@ -56,15 +56,15 @@ func runVng(ctx context.Context, vngPath, BinCommand, version string) result {
 	cmd.Stderr = &stderrBuf
 	err := cmd.Run()
 	if err == nil {
-		return result{version: version, res: success, message: stdoutBuf.String()}
+		return result{version: version, res: success, message: "Stdout:\n" + stdoutBuf.String()}
 	}
 
 	stderrStr := stderrBuf.String()
 	if strings.Contains(stderrStr, defaultMissingKernelVersion) || strings.Contains(stderrStr, defaultWrongFormat) {
-		return result{version: version, res: missing, message: stderrStr}
+		return result{version: version, res: missing, message: "Stdout:\n" + stdoutBuf.String() + "\nStderr:\n" + stderrBuf.String()}
 	}
 
-	return result{version: version, res: failure, message: stderrStr}
+	return result{version: version, res: failure, message: "Stdout:\n" + stdoutBuf.String() + "\nStderr:\n" + stderrBuf.String()}
 }
 
 func convertResToIcon(res code) string {
