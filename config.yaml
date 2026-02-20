@@ -10,6 +10,6 @@ out_path: ""
 report_only: false
 # kernel versions to test
 kernel_versions:
-    - v5.4.293
-    - v5.10.237
-    - v5.15.182
+    - v5.15.197
+    - v6.1.159
+    - v6.6.119
