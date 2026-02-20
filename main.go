@@ -93,7 +93,7 @@ func printReport(results []result, outfile string, reportOnly bool) bool {
 		icon := convertResToIcon(r.res)
 
 		if !reportOnly {
-			messages += fmt.Sprintf("- %s %s -> %s\n", icon, r.version, r.message)
+			messages += fmt.Sprintf("- %s %s:\n%s\n", icon, r.version, r.message)
 		}
 		report += fmt.Sprintf("|%s|%s|\n", r.version, icon)
 	}
