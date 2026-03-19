@@ -1,5 +1,7 @@
 # bpfvalidator
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 `bpfvalidator` is a simple tool that spawns qemu machines to test a specific binary on these machines. This is particularly useful for testing eBPF programs against different kernel versions.
 Under the hood it uses [virtme-ng](https://github.com/arighi/virtme-ng) tool to create qemu instancies.
 Given this configuration file:
@@ -158,3 +160,7 @@ The action offers two outputs: `report` and `outcome`.
       - name: Show outcome
         run: echo "${{ steps.test.outputs.outcome }}"
 ```
+
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE).
