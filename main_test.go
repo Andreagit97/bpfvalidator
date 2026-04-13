@@ -21,11 +21,15 @@ import (
 )
 
 func defaultConfig(versions []string, successBinary bool) *Config {
+	vmCfgs := make([]VMConfig, 0, len(versions))
+	for _, version := range versions {
+		vmCfgs = append(vmCfgs, VMConfig{KernelVersion: version})
+	}
 	cfg := &Config{
-		KernelVersions: versions,
-		OutPath:        "",
-		VngPath:        "vng",
-		Parallel:       1,
+		VMConfigs: vmCfgs,
+		OutPath:   "",
+		VngPath:   "vng",
+		Parallel:  1,
 	}
 	if successBinary {
 		cfg.Cmd = "/usr/bin/true"

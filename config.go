@@ -19,8 +19,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -34,7 +36,8 @@ const (
 	keyParallel       = "parallel"
 	keyOutPath        = "out_path"
 	keyReportOnly     = "report_only"
-	keyKernelVersions = "kernel_versions"
+	keyKernelVersions = "kernel_versions" // Only used as CLI argument.
+	keyVMConfigs      = "vm_configs"      // Only used in YAML configuration parsing.
 
 	defaultConfigPath = "./config.yaml"
 	defaultVngPath    = "vng" // assuming vng is in PATH
@@ -44,13 +47,18 @@ const (
 	defaultReportOnly = false
 )
 
+type VMConfig struct {
+	KernelVersion string `mapstructure:"kernel_version"`
+	VngArgs       string `mapstructure:"vng_args"`
+}
+
 type Config struct {
-	VngPath        string   `mapstructure:"vng_path"`
-	Cmd            string   `mapstructure:"cmd"`
-	Parallel       int      `mapstructure:"parallel"`
-	OutPath        string   `mapstructure:"out_path"`
-	ReportOnly     bool     `mapstructure:"report_only"`
-	KernelVersions []string `mapstructure:"kernel_versions"`
+	VngPath    string     `mapstructure:"vng_path"`
+	Cmd        string     `mapstructure:"cmd"`
+	Parallel   int        `mapstructure:"parallel"`
+	OutPath    string     `mapstructure:"out_path"`
+	ReportOnly bool       `mapstructure:"report_only"`
+	VMConfigs  []VMConfig `mapstructure:"vm_configs"`
 }
 
 // fileExists checks if the given path exists and is accessible
@@ -68,8 +76,8 @@ func fileExists(path string) bool {
 }
 
 func (cfg *Config) String() string {
-	return fmt.Sprintf(`Config{VngPath: "%s", Cmd: "%s", Parallel: %d, OutPath: "%s", ReportOnly: %t, KernelVersions: %v}`,
-		cfg.VngPath, cfg.Cmd, cfg.Parallel, cfg.OutPath, cfg.ReportOnly, cfg.KernelVersions)
+	return fmt.Sprintf(`Config{VngPath: "%s", Cmd: "%s", Parallel: %d, OutPath: "%s", ReportOnly: %t, VMConfigs: %+v}`,
+		cfg.VngPath, cfg.Cmd, cfg.Parallel, cfg.OutPath, cfg.ReportOnly, cfg.VMConfigs)
 }
 
 func (cfg *Config) validateConfig() error {
@@ -86,10 +94,35 @@ func (cfg *Config) validateConfig() error {
 		return fmt.Errorf("tested binary not found at '%s'", parts[0])
 	}
 
-	if len(cfg.KernelVersions) == 0 {
-		return fmt.Errorf("'kernel_versions' cannot be empty")
+	if len(cfg.VMConfigs) == 0 {
+		return fmt.Errorf("VMs configuration list cannot be empty")
 	}
 	return nil
+}
+
+// decodeVMConfig is a mapstructure.DecodeHookFunc allowing to unmarshal a VMConfig.
+func decodeVMConfig(fromType, toType reflect.Type, from any) (any, error) {
+	if toType != reflect.TypeOf(VMConfig{}) {
+		return from, nil
+	}
+
+	vmCfg := &VMConfig{}
+	switch fromType.Kind() {
+	case reflect.String:
+		version, ok := from.(string)
+		if !ok {
+			return nil, fmt.Errorf("'version' must be a string")
+		}
+		vmCfg.KernelVersion = version
+	case reflect.Struct:
+		if err := mapstructure.Decode(from, vmCfg); err != nil {
+			return nil, fmt.Errorf("error decoding VM configuration: %w", err)
+		}
+	default:
+		return from, nil
+	}
+
+	return vmCfg, nil
 }
 
 func setupConfig() *Config {
@@ -113,6 +146,12 @@ func setupConfig() *Config {
 		log.Fatalf("Error binding flags: %v", err)
 	}
 
+	// Before checking if a config file was provided as CLI argument, bind `vm_configs` key to `kernel_versions`, so
+	// that the list of kernel versions will override VMs configuration on the config file.
+	if err := viper.BindPFlag(keyVMConfigs, pflag.Lookup(keyKernelVersions)); err != nil {
+		log.Fatalf("Error binding %s key to %s flag: %v", keyVMConfigs, keyKernelVersions, err)
+	}
+
 	// Check if config file exists
 	configFile := viper.GetString(keyConfigPath)
 	viper.SetConfigFile(configFile)
@@ -123,7 +162,13 @@ func setupConfig() *Config {
 	}
 
 	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err := viper.Unmarshal(&cfg, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		// Default hooks.
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+		// Custom hooks.
+		decodeVMConfig,
+	))); err != nil {
 		log.Fatalf("cannot unmarshal config in struct: %v", err)
 	}
 
