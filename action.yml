@@ -52,7 +52,7 @@ runs:
       run: |
         sudo apt update
         sudo apt install -y git qemu-system udev virtiofsd
-        git clone --single-branch --branch v1.36 --depth 1 --recurse-submodules https://github.com/arighi/virtme-ng.git
+        git clone --single-branch --branch v1.41 --depth 1 --recurse-submodules https://github.com/arighi/virtme-ng.git
         cd virtme-ng/
         BUILD_VIRTME_NG_INIT=1 pip3 install . --break-system-packages
         echo "$HOME/.local/bin" >> $GITHUB_PATH
