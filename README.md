@@ -17,16 +17,17 @@ parallel: 1
 out_path: ""
 # show only the final report and not the individual VM outputs
 report_only: false
-# kernel versions to test
-kernel_versions:
-    - v5.4.293
-    - v5.10.237
-    - v5.15.182
+# VMs configuration
+vm_configs:
+  - v5.4.293
+  - kernel_version: v5.10.237
+    vng_args: "--memory 2G"
+  - v5.15.182
 ```
 
 `bpfvalidator` will:
 
-- create 3 qemu machines with the kernel versions specified in the configuration file
+- create 3 qemu machines with the kernel versions and vng arguments (if any) specified in the configuration file
 - run the command `/usr/bin/echo 'hey'` in each of them
 - wait for the command to finish
 - collect the output of the command

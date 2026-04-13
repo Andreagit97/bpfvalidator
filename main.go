@@ -58,9 +58,23 @@ func (r result) String() string {
 	return fmt.Sprintf("%s -> version: %s, message: '%s'", convertResToIcon(r.res), r.version, r.message)
 }
 
+// buildVngCmdline builds vng command line.
+func buildVngCmdline(vngPath, BinCommand string, vmCfg *VMConfig) []string {
+	kernelVersion := vmCfg.KernelVersion
+	var vngArgs []string
+	if vmCfg.VngArgs != "" {
+		vngArgs = strings.Split(vmCfg.VngArgs, " ")
+	}
+	cmdline := []string{vngPath, "-r", kernelVersion}
+	cmdline = append(cmdline, vngArgs...)
+	cmdline = append(cmdline, "--", BinCommand)
+	return cmdline
+}
+
 // runVng executes the vng command for a specific kernel version and returns true if exit code is 0
-func runVng(ctx context.Context, vngPath, BinCommand, version string) result {
-	cmdline := []string{vngPath, "-r", version, "--", BinCommand}
+func runVng(ctx context.Context, vngPath, BinCommand string, vmCfg *VMConfig) result {
+	kernelVersion := vmCfg.KernelVersion
+	cmdline := buildVngCmdline(vngPath, BinCommand, vmCfg)
 	log.Infof("Running command `%v`\n", cmdline)
 	defer log.Infof("Command complete `%v`\n", cmdline)
 
@@ -70,15 +84,15 @@ func runVng(ctx context.Context, vngPath, BinCommand, version string) result {
 	cmd.Stderr = &stderrBuf
 	err := cmd.Run()
 	if err == nil {
-		return result{version: version, res: success, message: "Stdout:\n" + stdoutBuf.String()}
+		return result{version: kernelVersion, res: success, message: "Stdout:\n" + stdoutBuf.String()}
 	}
 
 	stderrStr := stderrBuf.String()
 	if strings.Contains(stderrStr, defaultMissingKernelVersion) || strings.Contains(stderrStr, defaultWrongFormat) {
-		return result{version: version, res: missing, message: "Stdout:\n" + stdoutBuf.String() + "\nStderr:\n" + stderrBuf.String()}
+		return result{version: kernelVersion, res: missing, message: "Stdout:\n" + stdoutBuf.String() + "\nStderr:\n" + stderrBuf.String()}
 	}
 
-	return result{version: version, res: failure, message: "Stdout:\n" + stdoutBuf.String() + "\nStderr:\n" + stderrBuf.String()}
+	return result{version: kernelVersion, res: failure, message: "Stdout:\n" + stdoutBuf.String() + "\nStderr:\n" + stderrBuf.String()}
 }
 
 func convertResToIcon(res code) string {
@@ -140,24 +154,24 @@ func run(cfg *Config) []result {
 	sem := make(chan struct{}, cfg.Parallel)
 	var wg sync.WaitGroup
 
-	results := make([]result, len(cfg.KernelVersions))
+	results := make([]result, len(cfg.VMConfigs))
 
-	// Launch vng commands concurrently for each kernel version
-	for i, ver := range cfg.KernelVersions {
+	// Launch vng commands concurrently for each VM configuration.
+	for i, vmCfg := range cfg.VMConfigs {
 		select {
 		case <-ctx.Done():
-			results[i] = result{version: ver, res: cancelled, message: "Cancelled"}
+			results[i] = result{version: vmCfg.KernelVersion, res: cancelled, message: "Cancelled"}
 			continue
 		default:
 		}
 
 		wg.Add(1)
 		sem <- struct{}{}
-		go func(idx int, version string) {
+		go func(idx int, vmCfg *VMConfig) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			results[idx] = runVng(ctx, cfg.VngPath, cfg.Cmd, version)
-		}(i, ver)
+			results[idx] = runVng(ctx, cfg.VngPath, cfg.Cmd, vmCfg)
+		}(i, &vmCfg)
 	}
 
 	wg.Wait()

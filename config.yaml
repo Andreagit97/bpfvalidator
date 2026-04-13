@@ -20,10 +20,11 @@ cmd: "/usr/bin/echo 'hey'"
 parallel: 2
 # Path to the output file for the report (if empty uses stdout)
 out_path: ""
-# show only the final report and not the individual VM outputs
+# Show only the final report and not the individual VM outputs
 report_only: false
-# kernel versions to test
-kernel_versions:
+# VMs configuration
+vm_configs:
     - v5.15.197
-    - v6.1.159
+    - kernel_version: v6.1.159
+      vng_args: "--memory 500M"
     - v6.6.119
